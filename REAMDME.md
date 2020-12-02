@@ -16,7 +16,7 @@ texttable 1.6.3
 ### MixHopConv
 
 ```
-class MixHopConv(in_feats, out_feats, p=[0, 1, 2], bias=True, activation=None, dropout=0.5)
+class MixHopConv(in_feats, out_feats, p=[0, 1, 2], bias=True, activation=None)
 ```
 
 MixHop Graph Convolutional layer from paper [MixHop: Higher-Order Graph Convolution Architectures via Sparsified Neighborhood Mixing](https://arxiv.org/abs/1905.00067)
@@ -31,7 +31,6 @@ Where $\hat{A} = D^{-\frac{1}{2}}(A + I_n)D^{-\frac{1}{2}}$. The graph input is 
 * p(list) - List of integer adjacency powers; i.e, the times of the adjacency matrix multiplied.
 * bias(bool) - If True, adds a learnable bias to the output. Default: True.
 * activation(callable activation function/layer or None, optional) - If not None, applies an activation function to the updated node features.
-* dropout(float) - Dropout layer for the output.
 
 ```
 forward(graph, feat)
@@ -56,6 +55,14 @@ python src/main.py --dataset [dataset] --p 0 1 2 --epochs 200
 
 ### Results
 
+* (v1) (gc+fc+dropout)s + (fc)s + softmax
+
 | Datset | Cora | Pubmed | Citeseer |
 | :-: | :-: | :-: | :-: |
 | Accuracy | 0.725 | 0.740 | 0.728 |
+
+* (v2) (gc+tanh+bn)s + split softmax
+
+| Datset | Cora | Pubmed | Citeseer |
+| :-: | :-: | :-: | :-: |
+| Accuracy | 0.785 | 0.762 | 0.762 |

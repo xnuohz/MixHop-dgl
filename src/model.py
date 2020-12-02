@@ -4,6 +4,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 from layers import MixHopConv, ListModule
 from tqdm import trange
@@ -22,33 +23,37 @@ class MixHopNetwork(nn.Module):
 
     def calculate_layer_sizes(self):
         self.args.gclayers = [self.n_features] + self.args.gclayers
-        self.args.fclayers = self.args.fclayers + [self.n_classes]
+
+        self.n_segs = int(self.args.gclayers[-1] / self.n_classes)
+        if self.args.gclayers[-1] % self.n_classes != 0:
+            print('Wasted columns: {} out of {}'.format(self.args.gclayers[-1] % self.n_classes, self.args.gclayers[-1]))
+
+        self.q = torch.tensor(np.random.rand(self.n_segs), requires_grad=True)
+        self.q = nn.Softmax(dim=0)(self.q)
+
 
     def setup_layer_structure(self):
         self.gc_layers = [
-            MixHopConv(in_feats, out_feats, self.args.p, bias=True, activation=None, dropout=self.args.dropout)
+            MixHopConv(in_feats, out_feats, self.args.p, bias=True, activation=torch.tanh)
             for in_feats, out_feats in zip(self.args.gclayers[:-1], self.args.gclayers[1:])
         ]
         self.gc_layers = ListModule(*self.gc_layers)
-
-        self.fc_layers = [
-            nn.Linear(in_feats, out_feats, bias=False)
-            for in_feats, out_feats in zip(self.args.fclayers[:-1], self.args.fclayers[1:])
-        ]
-        self.fc_layers = ListModule(*self.fc_layers)
 
     def calculate_loss(self):
         tot_weight_l2_loss = 0
         for gc_layer in self.gc_layers:
             tot_weight_l2_loss += gc_layer.calculate_loss()
+        tot_weight_l2_loss += torch.norm(self.q)
         return self.args.lamb * tot_weight_l2_loss
 
     def forward(self, graph, feat):
         for gc_layer in self.gc_layers:
             feat = gc_layer(graph, feat)
         
-        for fc_layer in self.fc_layers:
-            feat = fc_layer(feat)
+        output = 0
+        for k in range(self.n_segs):
+            segment = feat[:, k * self.n_classes : (k + 1) * self.n_classes]
+            output = segment * self.q[k] + output
         
         return feat
 
@@ -79,7 +84,7 @@ class Trainer:
             loss += self.model.calculate_loss()
 
             self.opt.zero_grad()
-            loss.backward()
+            loss.backward(retain_graph=True)
             self.opt.step()
 
             val_acc = self.predict(self.val_mask)

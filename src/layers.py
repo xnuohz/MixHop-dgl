@@ -7,13 +7,13 @@ import torch.nn as nn
 import dgl.function as fn
 
 class MixHopConv(nn.Module):
-    def __init__(self, in_feats, out_feats, p=[0, 1, 2], bias=True, activation=None, dropout=0.5):
+    def __init__(self, in_feats, out_feats, p=[0, 1, 2], bias=True, activation=None):
         super(MixHopConv, self).__init__()
         self.weights = {k: nn.Linear(in_feats, out_feats, bias=bias) for k in p}
         self._p = p
         self._activation = activation
         self.fc = nn.Linear(len(p) * out_feats, out_feats, bias=bias)
-        self.dropout = nn.Dropout(p=dropout)
+        self.bn = nn.BatchNorm1d(out_feats)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -50,7 +50,10 @@ class MixHopConv(nn.Module):
                     if self._activation:
                         output = self._activation(output)
                     outputs.append(output)
-            return self.fc(self.dropout(torch.cat(outputs, dim=1)))
+            
+            final = self.fc(torch.cat(outputs, dim=1))
+            final = self.bn(final)
+            return final
 
 class ListModule(torch.nn.Module):
     """
