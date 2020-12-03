@@ -27,38 +27,6 @@ The DGL's built-in Cora, Pubmed and Citeseer GraphDataset. Dataset summary:
 | Cora | 2,708 | 10,556 | 1,433 | 7 | 140 | 500 | 1000 |
 | Pubmed | 19,717 | 88,651 | 500 | 3 | 60 | 500 | 1000 |
 
-### MixHopConv
-
-```
-class MixHopConv(in_feats, out_feats, p=[0, 1, 2], bias=True, activation=None)
-```
-
-$$ H^{(i + 1)} = ||_{j \in P} \sigma(\hat{A}^j H^{(i)} W_j^{(i)}) $$
-
-Where $\hat{A} = D^{-\frac{1}{2}}(A + I_n)D^{-\frac{1}{2}}$. The graph input is expected to have self-loop edges added.
-
-#### Parameters:
-* in_feats(int) - Number of input features; i.e, the number of dimensions of $H^{(i)}$.
-* out_feats(int) - Number of output features; i.e, the number of dimensions of $H^{(i + 1)}.$
-* p(list) - List of integer adjacency powers; i.e, the times of the adjacency matrix multiplied.
-* bias(bool) - If True, adds a learnable bias to the output. Default: True.
-* activation(callable activation function/layer or None, optional) - If not None, applies an activation function to the updated node features.
-
-```
-forward(graph, feat)
-```
-Compute MixHop GC layer
-
-#### Parameters:
-* graph(DGLGraph) - The graph; i.e, for Node Classification.
-* feat(torch.Tensor) - The input feature of the graph with shape $(N, D_{in})$ where $D_{in}$ is size of input feature, $N$ is the number of nodes in the graph.
-
-#### Returns:
-The output feature of shape $(N, D_{out})$ where $D_{out}$ is size of output feature.
-
-#### Return type:
-torch.Tensor
-
 ### Usage
 
 ###### Dataset options
