@@ -53,16 +53,26 @@ torch.Tensor
 python src/main.py --dataset [dataset] --p 0 1 2 --epochs 200
 ```
 
-### Results
+### Dataset
+
+| Datset | nodes | edges | features | c | train | val | test |
+| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+| Citeseer | 3,327 | 9,228 | 3,703 | 6 | 120 | 500 | 1000 |
+| Cora | 2,708 | 10,556 | 1,433 | 7 | 140 | 500 | 1000 |
+| Pubmed | 19,717 | 88,651 | 500 | 3 | 60 | 500 | 1000 |
+
+### Results(deafult)
 
 * (v1) (gc+fc+dropout)s + (fc)s + softmax
-
-| Datset | Cora | Pubmed | Citeseer |
-| :-: | :-: | :-: | :-: |
-| Accuracy | 0.725 | 0.740 | 0.728 |
-
 * (v2) (gc+tanh+bn)s + split softmax
 
 | Datset | Cora | Pubmed | Citeseer |
 | :-: | :-: | :-: | :-: |
-| Accuracy | 0.785 | 0.762 | 0.762 |
+| Accuracy(original paper) | 0.818 | 0.800 | 0.714 |
+| Accuracy(pyg) | 0.588 | 0. | 0. |
+| Accuracy(DGL) | 0.788 | 0.762 | 0.602 |
+
+### Ref
+
+* [tensorflow](https://github.com/samihaija/mixhop)
+* [pytorch](https://github.com/benedekrozemberczki/MixHop-and-N-GCN)

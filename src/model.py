@@ -55,7 +55,7 @@ class MixHopNetwork(nn.Module):
             segment = feat[:, k * self.n_classes : (k + 1) * self.n_classes]
             output = segment * self.q[k] + output
         
-        return feat
+        return output
 
 class Trainer:
     def __init__(self, args, graph):
@@ -65,6 +65,7 @@ class Trainer:
         self.train_mask = graph.ndata['train_mask']
         self.val_mask = graph.ndata['val_mask']
         self.test_mask = graph.ndata['test_mask']
+        print('train {}, val {}, test {}'.format(sum(self.train_mask), sum(self.val_mask), sum(self.test_mask)))
         # data statistics
         self.n_nodes = graph.num_nodes()
         self.n_features = graph.ndata['feat'].shape[1]

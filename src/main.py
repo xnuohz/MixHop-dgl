@@ -24,7 +24,7 @@ def get_graph(name, raw_dir='./data'):
     if name == 'Cora':
         dataset = CoraGraphDataset(raw_dir=raw_dir)
     elif name == 'Citeseer':
-        dataset = CoraGraphDataset(raw_dir=raw_dir)
+        dataset = CiteseerGraphDataset(raw_dir=raw_dir)
     elif name == 'Pubmed':
         dataset = PubmedGraphDataset(raw_dir=raw_dir)
     else:
