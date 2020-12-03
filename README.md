@@ -15,7 +15,6 @@ numpy 1.19.4
 pandas 1.1.4
 tqdm 4.53.0
 torch 1.7.0
-texttable 1.6.3
 ```
 
 ### The graph dataset used in this example
@@ -102,5 +101,9 @@ $ python src/main.py --gclayers 200 200 200 --p 2 4 6
 | Datset | Cora | Pubmed | Citeseer |
 | :-: | :-: | :-: | :-: |
 | Accuracy(original paper) | 0.818 | 0.800 | 0.714 |
-| Accuracy(pyg) | 0.588 | 0. | 0. |
+| Accuracy(pyg) | 0.588 | 0.655 | 0.301 |
 | Accuracy(DGL) | 0.788 | 0.776 | 0.645 |
+
+### Ref
+
+[Example Guide](https://github.com/zhjwy9343/MVP4ModelExample)
