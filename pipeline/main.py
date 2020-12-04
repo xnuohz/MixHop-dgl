@@ -29,14 +29,13 @@ class MixHopConv(nn.Module):
         self.p = p
         self.activation = activation
         self.batchnorm = batchnorm
-        self.fc = nn.Linear(out_dim * len(p), out_dim)
 
         # define dropout layer
         self.dropout = nn.Dropout(dropout)
 
         # define batch norm layer
         if self.batchnorm:
-            self.bn = nn.BatchNorm1d(out_dim)
+            self.bn = nn.BatchNorm1d(out_dim * len(p))
         
         # define weight dict for each power j
         self.weights = nn.ModuleDict({
@@ -58,13 +57,16 @@ class MixHopConv(nn.Module):
 
                 if j in self.p:
                     output = self.weights[str(j)](feats)
-                    if self.activation is not None:
-                        output = self.activation(output)
                     outputs.append(output)
             
-            final = self.fc(torch.cat(outputs, dim=1))
-
-            final = self.bn(final)
+            final = torch.cat(outputs, dim=1)
+            
+            if self.batchnorm:
+                final = self.bn(final)
+            
+            if self.activation is not None:
+                final = self.activation(final)
+            
             final = self.dropout(final)
 
             return final
@@ -76,7 +78,8 @@ class MixHopGCN(nn.Module):
                  out_dim,
                  num_layers=2,
                  p=[0, 1, 2],
-                 dropout=0.0,
+                 input_dropout=0.0,
+                 layer_dropout=0.0,
                  activation=None,
                  batchnorm=False):
         super(MixHopGCN, self).__init__()
@@ -85,47 +88,52 @@ class MixHopGCN(nn.Module):
         self.out_dim = out_dim
         self.num_layers = num_layers
         self.p = p
-        self.dropout = dropout
+        self.input_dropout = input_dropout
+        self.layer_dropout = layer_dropout
         self.activation = activation
         self.batchnorm = batchnorm
 
         self.layers = nn.ModuleList()
 
         # Input layer and initial q for output layer
-        self.n_segs = int(self.hid_dim / self.out_dim)
+        # self.n_segs = int(self.hid_dim / self.out_dim)
 
-        if self.hid_dim % self.out_dim != 0:
-            print('Wasted columns: {} out of {}'.format(self.hid_dim % self.out_dim, self.hid_dim))
+        # if self.hid_dim % self.out_dim != 0:
+        #     print('Wasted columns: {} out of {}'.format(self.hid_dim % self.out_dim, self.hid_dim))
 
-        self.q = nn.Parameter(torch.tensor(np.random.rand(self.n_segs), requires_grad=True))
+        # self.q = nn.Parameter(torch.tensor(np.random.rand(self.n_segs), requires_grad=True))
         # self.q = nn.Softmax(dim=0)(self.q)
 
         self.layers.append(MixHopConv(self.in_dim,
                                       self.hid_dim,
                                       p=self.p,
-                                      dropout=self.dropout,
+                                      dropout=self.input_dropout,
                                       activation=self.activation,
                                       batchnorm=self.batchnorm))
         
         # Hidden layers with n - 1 MixHopConv layers
         for i in range(self.num_layers - 2):
-            self.layers.append(MixHopConv(self.hid_dim,
+            self.layers.append(MixHopConv(self.hid_dim * len(args.p),
                                           self.hid_dim,
                                           p=self.p,
-                                          dropout=self.dropout,
+                                          dropout=self.layer_dropout,
                                           activation=self.activation,
                                           batchnorm=self.batchnorm))
+        
+        self.fc_layers = nn.Linear(self.hid_dim * len(args.p), self.out_dim, bias=False)
 
     def forward(self, graph, feats):
         for layer in self.layers:
             feats = layer(graph, feats)
 
-        output = 0
-        for k in range(self.n_segs):
-            segment = feats[:, k * self.out_dim : (k + 1) * self.out_dim]
-            output = segment * self.q[k] + output
+        # output = 0
+        # for k in range(self.n_segs):
+        #     segment = feats[:, k * self.out_dim : (k + 1) * self.out_dim]
+        #     output = segment * self.q[k] + output
         
-        return output
+        feats = self.fc_layers(feats)
+
+        return feats
 
 def main(args):
     # Step 1: Prepare graph data and retrieve train/validation/test index ============================= #
@@ -175,7 +183,8 @@ def main(args):
                                 out_dim=n_classes,
                                 num_layers=args.num_layers,
                                 p=args.p,
-                                dropout=args.dropout,
+                                input_dropout=args.input_dropout,
+                                layer_dropout=args.layer_dropout,
                                 activation=torch.tanh,
                                 batchnorm=True)
     
@@ -183,7 +192,8 @@ def main(args):
 
     # Step 3: Create training components ===================================================== #
     loss_fn = nn.CrossEntropyLoss()
-    opt = optim.Adam(mixhopgcn_model.parameters(), lr=args.lr, weight_decay=args.lamb)
+    opt = optim.SGD(mixhopgcn_model.parameters(), lr=args.lr, weight_decay=args.lamb)
+    scheduler = optim.lr_scheduler.StepLR(opt, args.step_size, gamma=args.gamma)
 
     # Step 4: training epoches =============================================================== #
     acc = 0
@@ -221,6 +231,8 @@ def main(args):
         else:
             no_improvement = 0
             acc = valid_acc
+        
+        scheduler.step()
 
     # Test with mini batch after all epoch
     mixhopgcn_model.eval()
@@ -242,17 +254,21 @@ if __name__ == "__main__":
 
     # data source params
     parser.add_argument('--dataset', type=str, default='Cora', help='Name of dataset.')
-    parser.add_argument('--raw_dir', type=str, default='./data', help='Path of dataset.')
+    parser.add_argument('--raw-dir', type=str, default='./data', help='Path of dataset.')
     # cuda params
     parser.add_argument('--gpu', type=int, default=-1, help='GPU index. Default: -1, using CPU.')
-    # model params
+    # training params
     parser.add_argument('--epochs', type=int, default=2000, help='Traning epochs.')
     parser.add_argument('--early-stopping', type=int, default=200, help='Early stopping.')
-    parser.add_argument('--lr', type=float, default=0.05, help='Learning rate.')
-    parser.add_argument('--lamb', type=float, default=5e-2, help='L2 reg.')
-    parser.add_argument("--hid_dim", type=int, default=200, help='Hidden layer dimensionalities.')
-    parser.add_argument("--num_layers", type=int, default=4, help='Number of GNN layers.')
-    parser.add_argument("--dropout", type=float, default=0.5, help='Dropout rate.')
+    parser.add_argument('--lr', type=float, default=0.5, help='Learning rate.')
+    parser.add_argument('--lamb', type=float, default=5e-4, help='L2 reg.')
+    parser.add_argument('--step-size', type=int, default=40, help='Period of learning rate decay.')
+    parser.add_argument('--gamma', type=float, default=0.01, help='Multiplicative factor of learning rate decay.')
+    # model params
+    parser.add_argument("--hid-dim", type=int, default=60, help='Hidden layer dimensionalities.')
+    parser.add_argument("--num-layers", type=int, default=4, help='Number of GNN layers.')
+    parser.add_argument("--input-dropout", type=float, default=0.7, help='Dropout applied at input layer.')
+    parser.add_argument("--layer-dropout", type=float, default=0.9, help='Dropout applied at hidden layers.')
     parser.add_argument('--p', nargs='+', type=int, help='Powers list of adjacency matrix.')
 
     parser.set_defaults(p=[0, 1, 2])

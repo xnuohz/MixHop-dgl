@@ -31,17 +31,28 @@ The DGL's built-in Cora, Pubmed and Citeseer GraphDataset. Dataset summary:
 
 ###### Dataset options
 ```
---dataset     string     The graph dataset name.     Default is 'Cora'.
+--dataset     string     The graph dataset name.                   Default is 'Cora'.
+--raw_dir     string     The directory that will store the data.   Default is './data'.
+```
+
+###### GPU options
+```
+--gpu              INT     GPU index.                        Default is -1, using CPU.
 ```
 
 ###### Model options
 ```
---epochs           INT     Number of training epochs.      Default is 2000.
---early-stopping   INT     Early stopping rounds.          Default is 200.
---lr               FLOAT   Adam optimizer learning rate.   Default is 0.05.
---lamb             FLOAT   L2 regularization coefficient.  Default is 0.05.
---gclayers         LST     MixHop GC Layer sizes.          Default is [60, 60].
---p                LST     Powers of adjacency matrix.     Default is [0, 1, 2].
+--epochs           INT     Number of training epochs.        Default is 2000.
+--early-stopping   INT     Early stopping rounds.            Default is 200.
+--lr               FLOAT   Adam optimizer learning rate.     Default is 0.5.
+--lamb             FLOAT   L2 regularization coefficient.    Default is 0.0005.
+--step-size        INT     Period of learning rate decay.    Default is 40.
+--gamma            FLOAT   Factor of learning rate decay.    Default is 0.01.
+--hid-dim          INT     Hidden layer dimensionalities.    Default is 60.
+--num-layers       INT     Number of GNN layers.             Default is 4.
+--input-dropout    FLOAT   Dropout applied at input layer.   Default is 0.7.
+--layer-dropout    FLOAT   Dropout applied at hidden layers. Default is 0.9.
+--p                LST     Powers list of adjacency matrix.  Default is [0, 1, 2].
 ```
 
 ###### Examples
@@ -49,19 +60,30 @@ The DGL's built-in Cora, Pubmed and Citeseer GraphDataset. Dataset summary:
 The following commands learn a neural nwtwork and predict on the test set.
 Training a MixHop model on the default dataset.
 ```bash
-$ python src/main.py
+$ python pipeline/main.py
 ```
 Training a model for a 200 epochs and a 10 early stopping.
 ```bash
-$ python src/main.py --epochs 200 --early-stopping 10
+$ python pipeline/main.py --epochs 200 --early-stopping 10
 ```
 Training a model with different learning rate and regularization
 ```bash
-$ python src/main.py --lr 0.001 --lamb 0.1
+$ python pipeline/main.py --lr 0.001 --lamb 0.1
 ```
 Training a model with different model params
 ```bash
-$ python src/main.py --gclayers 200 200 200 --p 2 4 6
+$ python pipeline/main.py --num-layers 6 --p 2 4 6
+```
+Or just run the shell scripts which follow the origin code hyper-parameter
+```bash
+# Cora:
+$ bash train_cora.sh
+
+# Citeseer:
+$ bash train_citeseer.sh
+
+# Pubmed:
+$ bash train_pubmed.sh
 ```
 
 ### Performance
@@ -69,8 +91,9 @@ $ python src/main.py --gclayers 200 200 200 --p 2 4 6
 | Datset | Cora | Pubmed | Citeseer |
 | :-: | :-: | :-: | :-: |
 | Accuracy(original paper) | 0.818 | 0.800 | 0.714 |
-| Accuracy(pyg) | 0.588 | 0.655 | 0.301 |
+| Accuracy(pyg) | 0.588 | 0.655 | 0.502 |
 | Accuracy(DGL) | 0.788 | 0.776 | 0.645 |
+| Accuracy(Pipeline) | 0.779 | 0.760 | 0.665 |
 
 ### Ref
 

@@ -1,0 +1,1 @@
+python pipeline/main.py --gpu 0 --dataset Cora --lr 1 --input-dropout 0.5 --lamb 5e-3
