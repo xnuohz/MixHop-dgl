@@ -1,1 +1,0 @@
-python pipeline/main.py --gpu 0 --dataset Pubmed --step-size 20 --layer-dropout=0.7 --lamb 5e-3
