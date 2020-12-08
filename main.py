@@ -1,10 +1,11 @@
-""" The main file to train a Simplified MixHopGCN model using a full graph """
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+""" The main file to train a MixHop model using a full graph """
 
 import argparse
 import torch
 import torch.optim as optim
 import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 import dgl
 import dgl.function as fn
@@ -14,7 +15,7 @@ from tqdm import trange
 
 class MixHopConv(nn.Module):
     """
-    One layer of MixHopGCN.
+    One layer of MixHop.
     """
     def __init__(self,
                  in_dim,
@@ -71,7 +72,7 @@ class MixHopConv(nn.Module):
 
             return final
 
-class MixHopGCN(nn.Module):
+class MixHop(nn.Module):
     def __init__(self,
                  in_dim,
                  hid_dim, 
@@ -82,7 +83,7 @@ class MixHopGCN(nn.Module):
                  layer_dropout=0.0,
                  activation=None,
                  batchnorm=False):
-        super(MixHopGCN, self).__init__()
+        super(MixHop, self).__init__()
         self.in_dim = in_dim
         self.hid_dim = hid_dim
         self.out_dim = out_dim
@@ -139,19 +140,19 @@ def main(args):
     # Step 1: Prepare graph data and retrieve train/validation/test index ============================= #
     # Load from DGL dataset
     if args.dataset == 'Cora':
-        dataset = CoraGraphDataset(raw_dir=args.raw_dir)
+        dataset = CoraGraphDataset()
     elif args.dataset == 'Citeseer':
-        dataset = CiteseerGraphDataset(raw_dir=args.raw_dir)
+        dataset = CiteseerGraphDataset()
     elif args.dataset == 'Pubmed':
-        dataset = PubmedGraphDataset(raw_dir=args.raw_dir)
+        dataset = PubmedGraphDataset()
     else:
-        raise ValueError('Dataset {} is invalid.'.format(args.raw_dir))
+        raise ValueError('Dataset {} is invalid.'.format(args.dataset))
 
     graph = dataset[0]
     graph = dgl.add_self_loop(graph)
 
     # check cuda
-    if args.gpu > 0 and torch.cuda.is_available():
+    if args.gpu >= 0 and torch.cuda.is_available():
         device = 'cuda:{}'.format(args.gpu)
     else:
         device = 'cpu'
@@ -175,10 +176,10 @@ def main(args):
     val_idx = torch.nonzero(val_mask, as_tuple=False).squeeze().to(device)
     test_idx = torch.nonzero(test_mask, as_tuple=False).squeeze().to(device)
 
-    graph.to(device)
+    graph = graph.to(device)
 
     # Step 2: Create model =================================================================== #
-    mixhopgcn_model = MixHopGCN(in_dim=n_features,
+    model = MixHop(in_dim=n_features,
                                 hid_dim=args.hid_dim,
                                 out_dim=n_classes,
                                 num_layers=args.num_layers,
@@ -188,11 +189,11 @@ def main(args):
                                 activation=torch.tanh,
                                 batchnorm=True)
     
-    mixhopgcn_model = mixhopgcn_model.to(device)
+    model = model.to(device)
 
     # Step 3: Create training components ===================================================== #
     loss_fn = nn.CrossEntropyLoss()
-    opt = optim.SGD(mixhopgcn_model.parameters(), lr=args.lr, weight_decay=args.lamb)
+    opt = optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.lamb)
     scheduler = optim.lr_scheduler.StepLR(opt, args.step_size, gamma=args.gamma)
 
     # Step 4: training epoches =============================================================== #
@@ -203,16 +204,17 @@ def main(args):
     for _ in epochs:
 
         # Training and validation using a full graph
-        mixhopgcn_model.train()
+        model.train()
 
-        logits = mixhopgcn_model.forward(graph, feats)
+        logits = model(graph, feats)
 
         # compute loss
         train_loss = loss_fn(logits[train_idx], labels[train_idx])
         train_acc = torch.sum(logits[train_idx].argmax(dim=1) == labels[train_idx]).item() / len(train_idx)
 
-        valid_loss = loss_fn(logits[val_idx], labels[val_idx])
-        valid_acc = torch.sum(logits[val_idx].argmax(dim=1) == labels[val_idx]).item() / len(val_idx)
+        with torch.no_grad():
+            valid_loss = loss_fn(logits[val_idx], labels[val_idx])
+            valid_acc = torch.sum(logits[val_idx].argmax(dim=1) == labels[val_idx]).item() / len(val_idx)
 
         # backward
         opt.zero_grad()
@@ -234,32 +236,25 @@ def main(args):
         
         scheduler.step()
 
-    # Test with mini batch after all epoch
-    mixhopgcn_model.eval()
-
-    # forward
-    logits = mixhopgcn_model.forward(graph, feats)
-
-    # compute loss
-    test_loss = loss_fn(logits[test_idx], labels[test_idx])
+    model.eval()
+    logits = model(graph, feats)
     test_acc = torch.sum(logits[test_idx].argmax(dim=1) == labels[test_idx]).item() / len(test_idx)
 
-    print("Test Acc {:.4f} | Test loss {:.4f}".format(test_acc, test_loss.item()))
+    print("Test Acc {:.4f}".format(test_acc))
 
 if __name__ == "__main__":
     """
-    MixHop Model Parameters
+    MixHop Model Hyperparameters
     """
     parser = argparse.ArgumentParser(description='MixHop GCN')
 
     # data source params
     parser.add_argument('--dataset', type=str, default='Cora', help='Name of dataset.')
-    parser.add_argument('--raw-dir', type=str, default='./data', help='Path of dataset.')
     # cuda params
     parser.add_argument('--gpu', type=int, default=-1, help='GPU index. Default: -1, using CPU.')
     # training params
-    parser.add_argument('--epochs', type=int, default=2000, help='Traning epochs.')
-    parser.add_argument('--early-stopping', type=int, default=200, help='Early stopping.')
+    parser.add_argument('--epochs', type=int, default=2000, help='Training epochs.')
+    parser.add_argument('--early-stopping', type=int, default=200, help='Patient epochs to wait before early stopping.')
     parser.add_argument('--lr', type=float, default=0.5, help='Learning rate.')
     parser.add_argument('--lamb', type=float, default=5e-4, help='L2 reg.')
     parser.add_argument('--step-size', type=int, default=40, help='Period of learning rate decay.')
@@ -269,7 +264,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-layers", type=int, default=4, help='Number of GNN layers.')
     parser.add_argument("--input-dropout", type=float, default=0.7, help='Dropout applied at input layer.')
     parser.add_argument("--layer-dropout", type=float, default=0.9, help='Dropout applied at hidden layers.')
-    parser.add_argument('--p', nargs='+', type=int, help='Powers list of adjacency matrix.')
+    parser.add_argument('--p', nargs='+', type=int, help='List of powers of adjacency matrix.')
 
     parser.set_defaults(p=[0, 1, 2])
 
