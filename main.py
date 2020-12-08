@@ -97,15 +97,7 @@ class MixHop(nn.Module):
 
         self.layers = nn.ModuleList()
 
-        # Input layer and initial q for output layer
-        # self.n_segs = int(self.hid_dim / self.out_dim)
-
-        # if self.hid_dim % self.out_dim != 0:
-        #     print('Wasted columns: {} out of {}'.format(self.hid_dim % self.out_dim, self.hid_dim))
-
-        # self.q = nn.Parameter(torch.tensor(np.random.rand(self.n_segs), requires_grad=True))
-        # self.q = nn.Softmax(dim=0)(self.q)
-
+        # Input layer
         self.layers.append(MixHopConv(self.in_dim,
                                       self.hid_dim,
                                       p=self.p,
@@ -127,11 +119,6 @@ class MixHop(nn.Module):
     def forward(self, graph, feats):
         for layer in self.layers:
             feats = layer(graph, feats)
-
-        # output = 0
-        # for k in range(self.n_segs):
-        #     segment = feats[:, k * self.out_dim : (k + 1) * self.out_dim]
-        #     output = segment * self.q[k] + output
         
         feats = self.fc_layers(feats)
 
