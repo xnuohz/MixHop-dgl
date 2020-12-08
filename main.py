@@ -45,6 +45,7 @@ class MixHopConv(nn.Module):
 
     def forward(self, graph, feats):
         with graph.local_scope():
+            # assume that the graphs are undirected and graph.in_degrees() is the same as graph.out_degrees()
             degs = graph.in_degrees().float().clamp(min=1)
             norm = torch.pow(degs, -0.5).to(feats.device).unsqueeze(1)
             max_j = max(self.p) + 1
@@ -147,7 +148,7 @@ def main(args):
         dataset = PubmedGraphDataset()
     else:
         raise ValueError('Dataset {} is invalid.'.format(args.dataset))
-
+    
     graph = dataset[0]
     graph = dgl.add_self_loop(graph)
 
@@ -180,14 +181,14 @@ def main(args):
 
     # Step 2: Create model =================================================================== #
     model = MixHop(in_dim=n_features,
-                                hid_dim=args.hid_dim,
-                                out_dim=n_classes,
-                                num_layers=args.num_layers,
-                                p=args.p,
-                                input_dropout=args.input_dropout,
-                                layer_dropout=args.layer_dropout,
-                                activation=torch.tanh,
-                                batchnorm=True)
+                   hid_dim=args.hid_dim,
+                   out_dim=n_classes,
+                   num_layers=args.num_layers,
+                   p=args.p,
+                   input_dropout=args.input_dropout,
+                   layer_dropout=args.layer_dropout,
+                   activation=torch.tanh,
+                   batchnorm=True)
     
     model = model.to(device)
 
