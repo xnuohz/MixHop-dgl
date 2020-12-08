@@ -188,10 +188,9 @@ def main(args):
     acc = 0
     no_improvement = 0
     epochs = trange(args.epochs, desc='Accuracy & Loss')
-    
-    for _ in epochs:
 
-        # Training and validation using a full graph
+    for _ in epochs:
+        # Training using a full graph
         model.train()
 
         logits = model(graph, feats)
@@ -200,14 +199,17 @@ def main(args):
         train_loss = loss_fn(logits[train_idx], labels[train_idx])
         train_acc = torch.sum(logits[train_idx].argmax(dim=1) == labels[train_idx]).item() / len(train_idx)
 
-        with torch.no_grad():
-            valid_loss = loss_fn(logits[val_idx], labels[val_idx])
-            valid_acc = torch.sum(logits[val_idx].argmax(dim=1) == labels[val_idx]).item() / len(val_idx)
-
         # backward
         opt.zero_grad()
         train_loss.backward()
         opt.step()
+
+        # Validation using a full graph
+        model.eval()
+
+        with torch.no_grad():
+            valid_loss = loss_fn(logits[val_idx], labels[val_idx])
+            valid_acc = torch.sum(logits[val_idx].argmax(dim=1) == labels[val_idx]).item() / len(val_idx)
 
         # Print out performance
         epochs.set_description('Train Acc {:.4f} | Train Loss {:.4f} | Val Acc {:.4f} | Val loss {:.4f}'.format(
