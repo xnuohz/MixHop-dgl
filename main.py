@@ -7,6 +7,7 @@ import torch
 import torch.optim as optim
 import torch.nn as nn
 import numpy as np
+import random
 import dgl
 import dgl.function as fn
 
@@ -40,7 +41,7 @@ class MixHopConv(nn.Module):
         
         # define weight dict for each power j
         self.weights = nn.ModuleDict({
-            str(j): nn.Linear(in_dim, out_dim) for j in p
+            str(j): nn.Linear(in_dim, out_dim, bias=False) for j in p
         })
 
     def forward(self, graph, feats):
@@ -51,15 +52,15 @@ class MixHopConv(nn.Module):
             max_j = max(self.p) + 1
             outputs = []
             for j in range(max_j):
+                if j in self.p:
+                    output = self.weights[str(j)](feats)
+                    outputs.append(output)
+
                 feats = feats * norm
                 graph.ndata['h'] = feats
                 graph.update_all(fn.copy_u('h', 'm'), fn.sum('m', 'h'))
                 feats = graph.ndata.pop('h')
                 feats = feats * norm
-
-                if j in self.p:
-                    output = self.weights[str(j)](feats)
-                    outputs.append(output)
             
             final = torch.cat(outputs, dim=1)
             
@@ -96,6 +97,7 @@ class MixHop(nn.Module):
         self.batchnorm = batchnorm
 
         self.layers = nn.ModuleList()
+        self.dropout = nn.Dropout(self.input_dropout)
 
         # Input layer
         self.layers.append(MixHopConv(self.in_dim,
@@ -117,6 +119,7 @@ class MixHop(nn.Module):
         self.fc_layers = nn.Linear(self.hid_dim * len(args.p), self.out_dim, bias=False)
 
     def forward(self, graph, feats):
+        feats = self.dropout(feats)
         for layer in self.layers:
             feats = layer(graph, feats)
         
@@ -124,7 +127,18 @@ class MixHop(nn.Module):
 
         return feats
 
+
+def setup_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+
 def main(args):
+    # Step 0: set random seed
+    setup_seed(6)
+
     # Step 1: Prepare graph data and retrieve train/validation/test index ============================= #
     # Load from DGL dataset
     if args.dataset == 'Cora':

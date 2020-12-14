@@ -90,4 +90,5 @@ $ bash train_pubmed.sh
 | Dataset | Cora | Pubmed | Citeseer |
 | :-: | :-: | :-: | :-: |
 | Accuracy(original paper) | 0.818 | 0.800 | 0.714 |
-| Accuracy(DGL) | 0.779 | 0.760 | 0.665 |
+| Accuracy(TF) | 0.816 | 0.789 | 0.712 |
+| Accuracy(DGL) | 0.809 | 0.785 | 0.705 |
