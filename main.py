@@ -15,8 +15,35 @@ from dgl.data import CoraGraphDataset, CiteseerGraphDataset, PubmedGraphDataset
 from tqdm import trange
 
 class MixHopConv(nn.Module):
-    """
-    One layer of MixHop.
+    r"""
+
+    Description
+    -----------
+    MixHop Graph Convolutional layer from paper `MixHop: Higher-Order Graph Convolutional Architecturesvia Sparsified Neighborhood Mixing
+     <https://arxiv.org/pdf/1905.00067.pdf>`__.
+
+    .. math::
+        H^{(i+1)} =\underset{j \in P}{\Bigg\Vert} \sigma\left(\widehat{A}^j H^{(i)} W_j^{(i)}\right),
+
+    where :math:`\widehat{A}` denotes the symmetrically normalized adjacencymatrix with self-connections,
+    :math:`D_{ii} = \sum_{j=0} \widehat{A}_{ij}` its diagonal degree matrix,
+    :math:`W_j^{(i)}` denotes the trainable weight matrix of different MixHop layers.
+
+    Parameters
+    ----------
+    in_dim : int
+        Input feature size. i.e, the number of dimensions of :math:`H^{(i)}`.
+    out_dim : int
+        Output feature size for each power.
+    p: list
+        List of powers of adjacency matrix. Defaults: ``[0, 1, 2]``.
+    dropout: float, optional
+        Dropout rate on node features. Defaults: ``0``.
+    activation: callable activation function/layer or None, optional
+        If not None, applies an activation function to the updated node features.
+        Default: ``None``.
+    batchnorm: bool, optional
+        If True, use batch normalization. Defaults: ``False``.
     """
     def __init__(self,
                  in_dim,
@@ -52,6 +79,7 @@ class MixHopConv(nn.Module):
             max_j = max(self.p) + 1
             outputs = []
             for j in range(max_j):
+
                 if j in self.p:
                     output = self.weights[str(j)](feats)
                     outputs.append(output)
@@ -126,7 +154,6 @@ class MixHop(nn.Module):
         feats = self.fc_layers(feats)
 
         return feats
-
 
 def setup_seed(seed):
     torch.manual_seed(seed)
