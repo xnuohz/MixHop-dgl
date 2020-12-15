@@ -29,6 +29,11 @@ The DGL's built-in Cora, Pubmed and Citeseer GraphDataset. Dataset summary:
 
 ### Usage
 
+###### Seed options
+```
+--seed             int     Random seed.                        Default is -1.
+```
+
 ###### Dataset options
 ```
 --dataset          str     The graph dataset name.             Default is 'Cora'.
@@ -90,5 +95,5 @@ $ bash train_pubmed.sh
 | Dataset | Cora | Pubmed | Citeseer |
 | :-: | :-: | :-: | :-: |
 | Accuracy(original paper) | 0.818 | 0.800 | 0.714 |
-| Accuracy(TF) | 0.816 | 0.789 | 0.712 |
-| Accuracy(DGL) | 0.809 | 0.785 | 0.705 |
+| Accuracy(TF) | 0.610(0.156) | 0.746(0.065) | 0.700(0.017) |
+| Accuracy(DGL) | 0.801(0.005) | 0.780(0.005) | 0.692(0.005) |

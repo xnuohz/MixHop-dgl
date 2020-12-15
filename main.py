@@ -164,7 +164,8 @@ def setup_seed(seed):
 
 def main(args):
     # Step 0: set random seed
-    setup_seed(6)
+    if args.seed >= 0:
+        setup_seed(args.seed)
 
     # Step 1: Prepare graph data and retrieve train/validation/test index ============================= #
     # Load from DGL dataset
@@ -272,6 +273,7 @@ def main(args):
     test_acc = torch.sum(logits[test_idx].argmax(dim=1) == labels[test_idx]).item() / len(test_idx)
 
     print("Test Acc {:.4f}".format(test_acc))
+    return test_acc
 
 if __name__ == "__main__":
     """
@@ -279,6 +281,8 @@ if __name__ == "__main__":
     """
     parser = argparse.ArgumentParser(description='MixHop GCN')
 
+    # random seed
+    parser.add_argument('--seed', type=int, default=-1, help='Random seed.')
     # data source params
     parser.add_argument('--dataset', type=str, default='Cora', help='Name of dataset.')
     # cuda params
@@ -302,4 +306,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
 
-    main(args)
+    acc_lists = []
+
+    for _ in range(100):
+        acc_lists.append(main(args))
+    
+    acc_lists.sort()
+    acc_lists_top = np.array(acc_lists[50:])
+
+    mean = np.around(np.mean(acc_lists_top, axis=0), decimals=3)
+    std = np.around(np.std(acc_lists_top, axis=0), decimals=3)
+    print('Total acc: ', acc_lists)
+    print('Top 50 acc:', acc_lists_top)
+    print('mean', mean)
+    print('std', std)
