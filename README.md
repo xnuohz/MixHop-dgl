@@ -78,16 +78,16 @@ Train a model with different model hyperparameters.
 ```bash
 $ python main.py --num-layers 6 --p 2 4 6
 ```
-Or just run the shell scripts which follow the original hyperparameters.
+Train a model which follows the original hyperparameters on different datasets.
 ```bash
 # Cora:
-$ bash train_cora.sh
+$ python main.py --gpu 0 --dataset Cora --lr 1 --input-dropout 0.6 --lamb 5e-3 --hid-dim 100 --num-layers 3 --seed 9
 
 # Citeseer:
-$ bash train_citeseer.sh
+$ python main.py --gpu 0 --dataset Citeseer --lr 0.25 --input-dropout 0.5 --lamb 5e-3 --hid-dim 60 --num-layers 3 --seed 6
 
 # Pubmed:
-$ bash train_pubmed.sh
+$ python main.py --gpu 0 --dataset Pubmed --lr 0.5 --input-dropout 0.7 --lamb 5e-3 --hid-dim 60 --num-layers 3 --seed 6
 ```
 
 ### Performance
